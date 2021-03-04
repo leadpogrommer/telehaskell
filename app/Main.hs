@@ -28,9 +28,9 @@ import Data.Maybe (isJust)
 
 
 
-fromMaybeToIO:: Maybe a -> IO a
+fromMaybeToIO:: Maybe TRequest -> IO TRequest
 fromMaybeToIO (Just x) = return x
-fromMaybeToIO Nothing = fail "Invalid reuest"
+fromMaybeToIO Nothing = return $ TRequest (-1) "КОСТЫЛЬ"
 
 
 data TRequest = TRequest {chatID :: Integer, chatMessage:: String } deriving (Show, Generic)
@@ -64,7 +64,6 @@ getTg = do
 
 main :: IO ()
 main = do
-    threadDelay 1000000
     dbIp <- nameOrLocalhost "db"
     myIp <- nameOrLocalhost "bot"
     tg <- getTg
@@ -79,23 +78,26 @@ main = do
     serverWith (Config stdLogger "0.0.0.0" 8080) (requestHndler db)
     
 
--- connection - telegram, conn - mongodb
+
 requestHndler:: Pipe -> Handler B.ByteString  
 requestHndler db addr url request = do
     tg <- getTg
     let rq =  rqBody request
+    putStrLn $ Char8.unpack rq
     val <- fromMaybeToIO (A.decode rq :: Maybe TRequest)
+    
     let command = parseRequest $ chatMessage val
     putStrLn $ "Processing command: " ++ (show command)
     processCommand tg db (chatID val) command 
     return $ respond OK
  
 
-data Command = ErrorCommand String | StartCommand | HelpCommand | RemindCommand UTCTime String deriving Show 
+data Command = ErrorCommand String | StartCommand | HelpCommand | RemindCommand UTCTime String | KostylCommand deriving Show 
 
 processCommand tg db cID command = pc command
     where msg t = void $ sendMessage tg cID t
           pc:: Command -> IO ()
+          pc KostylCommand = return ()
           pc (ErrorCommand s) = msg $ "Error: " ++ s 
           pc StartCommand = msg "Welcome!" -- TODO: register user in db
           pc HelpCommand = msg "Really helpful text goes here..."
@@ -111,6 +113,7 @@ parseRequest:: String -> Command
 parseRequest string | scanRes == [] = ErrorCommand "You need to specify a command starting with \"/\""
                     | otherwise = parseCommand $ head $ snd $ head scanRes
     where scanRes = scan [re|^\/(\w+).*|] string
+          parseCommand "КОСТЫЛЬ" = KostylCommand
           parseCommand "start" = StartCommand
           parseCommand "help" = HelpCommand
           parseCommand "remind" | remindRes == [] = ErrorCommand "Use format /remind YYYY-MM-DD HH:MM your message"
