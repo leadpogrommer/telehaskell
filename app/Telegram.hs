@@ -16,9 +16,9 @@ tRequest (TConnectionData u t) endpoint a = do
     simpleHTTP (postRequestWithBody (u ++ "/bot" ++ t ++ "/" ++ endpoint) "application/json" (Char8.unpack body))
     
 
-data SetWebHookRequest = SetWebHookRequest {url::String, allowed_updates::String} deriving (Generic, Show)
+data SetWebHookRequest = SetWebHookRequest {url::String, allowed_updates::String, max_connections::Integer, drop_pending_updates:: Bool } deriving (Generic, Show)
 instance A.ToJSON SetWebHookRequest
-setWebHook conn url = tRequest conn "setWebhook" (SetWebHookRequest url "message")
+setWebHook conn url = tRequest conn "setWebhook" (SetWebHookRequest url "message" 1 True )
 setWebHook :: TConnectionData -> String -> IO (NS.Result (Response String))
 
 

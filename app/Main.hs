@@ -64,6 +64,7 @@ getTg = do
 
 main :: IO ()
 main = do
+    threadDelay 1000000
     dbIp <- nameOrLocalhost "db"
     myIp <- nameOrLocalhost "bot"
     tg <- getTg
@@ -116,7 +117,7 @@ parseRequest string | scanRes == [] = ErrorCommand "You need to specify a comman
                                 | otherwise  = remindCommand time
                             where remindRes = scan [re|^\/remind (\d\d\d\d-\d\d-\d\d \d\d:\d\d) (.*)|] string
                                   time = parseTimeM True defaultTimeLocale "%Y-%-m-%-d %H:%M" ((snd $ head remindRes) !! 0) :: Maybe UTCTime 
-                                  remindCommand Nothing  = ErrorCommand "Invlid time"
+                                  remindCommand Nothing  = ErrorCommand "Invalid time"
                                   remindCommand (Just t) = RemindCommand t ((snd $ head remindRes) !! 1)
           parseCommand _ = ErrorCommand "Unknown command"
                                   
