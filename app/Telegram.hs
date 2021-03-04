@@ -8,7 +8,7 @@ import qualified Network.Stream as NS
 import qualified Data.ByteString.Lazy.Char8 as Char8
 import GHC.Generics
 
-data TConnectionData = TConnectionData {url:: String, token:: String}
+data TConnectionData = TConnectionData {url:: String, token:: String} deriving (Show)
 
 tRequest :: A.ToJSON  a => TConnectionData -> String -> a -> IO (NS.Result (Response String))
 tRequest (TConnectionData u t) endpoint a = do

@@ -17,12 +17,13 @@ import Telegram
 import Text.Regex.PCRE.Heavy
 import Data.Time
 import Control.Monad ( void, forever )
-import System.Environment (getEnv)
+import System.Environment (getEnv, lookupEnv)
 
 import Db
 import Database.MongoDB (Pipe)
 import Control.Concurrent
 import Data.Time.Clock.POSIX (getPOSIXTime)
+import Data.Maybe (isJust)
 
 
 
@@ -43,22 +44,38 @@ instance A.FromJSON  TRequest where
     parseJSON _ = empty
 
 
+inDocker = do
+    ev <- lookupEnv "IN_DOCKER"
+    return $ isJust ev
+
+nameOrLocalhost :: String -> IO String 
+nameOrLocalhost s = do
+    d <- inDocker
+    return $ if d then s else "127.0.0.1" 
+
+
 getTg = do
-    token <- getEnv "BOT_TOKEN" 
-    return $ TConnectionData "http://127.0.0.1:8081" token
+    token <- getEnv "BOT_TOKEN"
+    apiIp <- nameOrLocalhost "telegram-bot-api"
+    return $ TConnectionData ("http://" ++ apiIp ++ ":8081") token
 
 
 
 
 main :: IO ()
 main = do
+    dbIp <- nameOrLocalhost "db"
+    myIp <- nameOrLocalhost "bot"
     tg <- getTg
-    db <- getConnection "127.0.0.1"
+    print tg
+    print dbIp
+    print myIp
+    db <- getConnection dbIp
     forkIO $ notificationLoop db
-    result <- setWebHook tg "http://127.0.0.1:8080"
+    result <- setWebHook tg ("http://" ++ myIp ++ ":8080")
     body <- getResponseBody result
     print body
-    serverWith (Config stdLogger "127.0.0.1" 8080) (requestHndler db)
+    serverWith (Config stdLogger "0.0.0.0" 8080) (requestHndler db)
     
 
 -- connection - telegram, conn - mongodb
@@ -68,6 +85,7 @@ requestHndler db addr url request = do
     let rq =  rqBody request
     val <- fromMaybeToIO (A.decode rq :: Maybe TRequest)
     let command = parseRequest $ chatMessage val
+    putStrLn $ "Processing command: " ++ (show command)
     processCommand tg db (chatID val) command 
     return $ respond OK
  
